@@ -1917,6 +1917,7 @@ function ThreadDetailBody(
                         hasCompactableConversation={
                           hasCompactableConversation && !props.isCompacting
                         }
+                        onCompactContext={() => void props.onSendCommand("/compact")}
                         {...(freshSessionAvailable
                           ? {
                               onFreshSession: () => setFreshSessionPending(selectedThreadKey, true),

@@ -80,6 +80,7 @@ import {
   ComposerInlineControl,
   ComposerToolbarRow,
 } from "../../components/ComposerToolbar";
+import { ContextWindowControl } from "../context-window/ContextWindowControl";
 import { formatTokens } from "@t3tools/shared/usageFormat";
 import { ComposerModelControl } from "../../components/ComposerModelControl";
 import {
@@ -145,6 +146,8 @@ export interface ThreadComposerProps {
   readonly selectedThread: EnvironmentThreadShell;
   readonly reportedModelSelection?: ModelSelection | null;
   readonly hasCompactableConversation: boolean;
+  /** Fork (Drawo Code): shows the context window ring; sends `/compact` from its panel. */
+  readonly onCompactContext?: () => void;
   /** Set while the next send compacts the thread first. */
   readonly compactBeforeSend?: {
     readonly tokens: number;
@@ -1026,6 +1029,18 @@ export const ThreadComposer = function ThreadComposer(props: ThreadComposerProps
                   className="min-w-0 shrink flex-row items-center"
                   entering={compactEditor.toolbarControlsEntering}
                 >
+                  {props.onCompactContext ? (
+                    <ContextWindowControl
+                      size={usesLargeControls ? "large" : "regular"}
+                      iconOnly={!compactEditor.isExpanded}
+                      canCompact={
+                        props.canOperateThread &&
+                        props.hasCompactableConversation &&
+                        !props.activeThreadBusy
+                      }
+                      onCompact={props.onCompactContext}
+                    />
+                  ) : null}
                   {compactControl}
                   {modelControl}
                 </Animated.View>
