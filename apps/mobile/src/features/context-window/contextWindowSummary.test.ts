@@ -104,4 +104,22 @@ describe("summarizeContextWindow", () => {
     expect(bare?.thread).toBeNull();
     expect(bare?.cost).toBeNull();
   });
+
+  it("treats omitted optional fields as missing", () => {
+    const summary = summarizeContextWindow({
+      usedTokens: 124_000,
+      maxTokens: 200_000,
+      remainingTokens: null,
+      usedPercentage: 62,
+      remainingPercentage: null,
+      updatedAt: "2026-11-20T00:00:00.000Z",
+    });
+    expect(summary).toMatchObject({
+      percent: 62,
+      autoCompact: null,
+      lastTurn: null,
+      thread: null,
+      cost: null,
+    });
+  });
 });

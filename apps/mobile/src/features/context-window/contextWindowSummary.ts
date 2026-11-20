@@ -37,9 +37,16 @@ export function summarizeContextWindow(
 
   const rawPercent = snapshot.usedPercentage ?? (snapshot.usedTokens / maxTokens) * 100;
   const percent = Math.round(Math.max(0, Math.min(100, rawPercent)));
-  const threshold = snapshot.autoCompactThreshold;
-  const hasLastTurn = snapshot.lastInputTokens !== null || snapshot.lastOutputTokens !== null;
-  const hasThread = snapshot.inputTokens !== null || snapshot.outputTokens !== null;
+  // Optional usage fields may be omitted as well as null.
+  const threshold = snapshot.autoCompactThreshold ?? null;
+  const lastInput = snapshot.lastInputTokens ?? null;
+  const lastOutput = snapshot.lastOutputTokens ?? null;
+  const input = snapshot.inputTokens ?? null;
+  const cached = snapshot.cachedInputTokens ?? null;
+  const output = snapshot.outputTokens ?? null;
+  const cost = snapshot.cost ?? null;
+  const hasLastTurn = lastInput !== null || lastOutput !== null;
+  const hasThread = input !== null || output !== null;
 
   return {
     percent,
@@ -55,22 +62,15 @@ export function summarizeContextWindow(
           }
         : null,
     lastTurn: hasLastTurn
-      ? {
-          input: formatTokens(snapshot.lastInputTokens ?? 0),
-          output: formatTokens(snapshot.lastOutputTokens ?? 0),
-        }
+      ? { input: formatTokens(lastInput ?? 0), output: formatTokens(lastOutput ?? 0) }
       : null,
     thread: hasThread
       ? {
-          input: formatTokens(snapshot.inputTokens ?? 0),
-          cached:
-            snapshot.cachedInputTokens === null ? null : formatTokens(snapshot.cachedInputTokens),
-          output: formatTokens(snapshot.outputTokens ?? 0),
+          input: formatTokens(input ?? 0),
+          cached: cached === null ? null : formatTokens(cached),
+          output: formatTokens(output ?? 0),
         }
       : null,
-    cost:
-      snapshot.cost === null
-        ? null
-        : { amount: snapshot.cost.amount, currency: snapshot.cost.currency },
+    cost: cost === null ? null : { amount: cost.amount, currency: cost.currency },
   };
 }
