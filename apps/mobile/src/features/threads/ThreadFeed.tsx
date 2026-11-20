@@ -209,6 +209,7 @@ import {
   type MediaVideoPreviewSource,
 } from "../../lib/videoPreviewSource";
 import { CopyTextButton } from "./CopyTextButton";
+import { RewindMessageButton } from "../rewind/RewindMessageButton";
 import { getReviewSectionIdForCheckpoint } from "../review/reviewModel";
 import { setReviewSelectedSectionId } from "../review/reviewState";
 import { Menu } from "../../components/ui/Menu";
@@ -2636,6 +2637,16 @@ function renderFeedEntry(
                   <SymbolView name="pencil" size={14} tintColor={iconSubtleColor} />
                 </Pressable>
               ) : null}
+              {/* Fork (Drawo Code): rewind to before this message, as on desktop. */}
+              <RewindMessageButton
+                environmentId={props.environmentId}
+                threadId={props.threadId}
+                messageId={message.id}
+                text={message.text}
+                context={message.context}
+                hasAttachments={attachments.length > 0}
+                tintColor={iconSubtleColor}
+              />
               {presentation.text.trim().length > 0 ? (
                 <UserMessageCopyButton
                   text={presentation.text}
