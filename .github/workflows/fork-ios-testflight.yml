@@ -106,14 +106,28 @@ jobs:
           expo-token: ${{ secrets.EXPO_TOKEN }}
           output: ${{ runner.temp }}/drawo-code.ipa
 
+      # Lets a failed upload be retried from this file instead of a full rebuild.
+      - name: Keep the build
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: drawo-code-ipa
+          path: ${{ runner.temp }}/drawo-code.ipa
+          retention-days: 7
+
       # eas.json names upstream's App Store Connect app; rewritten after the build so it stays clean.
+      # eas submit reads the API key only from the profile, not from the EXPO_ASC_* variables.
       - name: Point submit at the fork's app
         working-directory: apps/mobile
         run: |
           node --input-type=module -e '
           import { readFileSync, writeFileSync } from "node:fs";
           const eas = JSON.parse(readFileSync("eas.json", "utf8"));
-          eas.submit.production.ios.ascAppId = process.env.FORK_ASC_APP_ID;
+          Object.assign(eas.submit.production.ios, {
+            ascAppId: process.env.FORK_ASC_APP_ID,
+            ascApiKeyPath: process.env.EXPO_ASC_API_KEY_PATH,
+            ascApiKeyId: process.env.EXPO_ASC_KEY_ID,
+            ascApiKeyIssuerId: process.env.EXPO_ASC_ISSUER_ID,
+          });
           writeFileSync("eas.json", JSON.stringify(eas, null, 2));
           '
 
