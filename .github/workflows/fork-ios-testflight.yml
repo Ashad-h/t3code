@@ -1,0 +1,124 @@
+name: Fork iOS TestFlight
+
+# Fork-only (Ashad-h/t3code): builds the iOS app on GitHub's macOS runner and uploads it to
+# this fork's TestFlight. apps/mobile/fork.config.ts applies the FORK_* identity below.
+# Secrets: EXPO_TOKEN, ASC_API_KEY_P8, ASC_KEY_ID, ASC_ISSUER_ID. Variable: FORK_ASC_APP_ID.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: fork-ios-testflight
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Fork config checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Drop checkout credentials
+        uses: ./.github/actions/drop-checkout-credentials
+
+      - name: Setup Vite+
+        uses: ./.github/actions/setup-ci-deps
+        with:
+          install-args: --filter=@t3tools/mobile...
+
+      # Runs without the FORK_* variables: upstream's app.config.test.ts expects upstream IDs.
+      - name: Config tests
+        working-directory: apps/mobile
+        run: vp test run --project unit fork.config.test.ts app.config.test.ts
+
+      - name: Typecheck
+        run: vp run --filter @t3tools/mobile typecheck
+
+  ios:
+    name: iOS build and TestFlight upload
+    needs: check
+    runs-on: xcode-27
+    timeout-minutes: 180
+    env:
+      APP_VARIANT: production
+      NODE_OPTIONS: --max-old-space-size=4096
+      FORK_IOS_BUNDLE_ID: cc.drawo.t3code
+      FORK_IOS_TEAM_ID: FVBUM2YL8B
+      FORK_APP_NAME: Drawo Code
+      FORK_EAS_OWNER: drawo
+      FORK_EAS_PROJECT_ID: ec7c0400-89fb-4045-9776-5938d01cc28b
+      FORK_ASC_APP_ID: ${{ vars.FORK_ASC_APP_ID }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      # EAS creates and stores the signing certificate and profiles with this key on first build.
+      EXPO_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      EXPO_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      EXPO_APPLE_TEAM_ID: FVBUM2YL8B
+      EXPO_APPLE_TEAM_TYPE: INDIVIDUAL
+    steps:
+      - name: Check configuration
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
+          missing=""
+          for name in EXPO_TOKEN EXPO_ASC_KEY_ID EXPO_ASC_ISSUER_ID ASC_API_KEY_P8 FORK_ASC_APP_ID; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing secrets or variables:$missing"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Drop checkout credentials
+        uses: ./.github/actions/drop-checkout-credentials
+
+      - name: Write App Store Connect key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
+          key="$RUNNER_TEMP/asc-api-key.p8"
+          printf '%s\n' "$ASC_API_KEY_P8" > "$key"
+          chmod 600 "$key"
+          echo "EXPO_ASC_API_KEY_PATH=$key" >> "$GITHUB_ENV"
+
+      - name: Build
+        uses: ./.github/actions/eas-local-build
+        with:
+          platform: ios
+          profile: production
+          environment: production
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+          output: ${{ runner.temp }}/drawo-code.ipa
+
+      # eas.json names upstream's App Store Connect app; rewritten after the build so it stays clean.
+      - name: Point submit at the fork's app
+        working-directory: apps/mobile
+        run: |
+          node --input-type=module -e '
+          import { readFileSync, writeFileSync } from "node:fs";
+          const eas = JSON.parse(readFileSync("eas.json", "utf8"));
+          eas.submit.production.ios.ascAppId = process.env.FORK_ASC_APP_ID;
+          writeFileSync("eas.json", JSON.stringify(eas, null, 2));
+          '
+
+      - name: Upload to TestFlight
+        working-directory: apps/mobile
+        run: eas submit --platform ios --profile production --path "$RUNNER_TEMP/drawo-code.ipa" --non-interactive
