@@ -7,8 +7,8 @@ import { ComposerInlineControl } from "../../components/ComposerToolbar";
 import { AppText as Text } from "../../components/ui/AppText";
 import { Button } from "../../components/ui/Button";
 import { Sheet } from "../../components/ui/Sheet";
-import { useUniwindTheme } from "../../lib/useUniwindTheme";
-import { CONTEXT_WINDOW_TONE_VARIABLE, ContextWindowRing } from "./ContextWindowRing";
+import { cn } from "../../lib/cn";
+import { CONTEXT_WINDOW_TONE_CLASS, ContextWindowRing } from "./ContextWindowRing";
 import { type ContextWindowSummary, summarizeContextWindow } from "./contextWindowSummary";
 import { useSelectedThreadContextWindow } from "./useSelectedThreadContextWindow";
 
@@ -54,7 +54,6 @@ function ContextWindowSheet(props: {
   readonly onClose: () => void;
 }) {
   const gt = useGT();
-  const theme = useUniwindTheme();
   const insets = useSafeAreaInsets();
   const { summary } = props;
   return (
@@ -72,27 +71,15 @@ function ContextWindowSheet(props: {
       >
         <View className="gap-2">
           <Text className="text-4xl font-semibold text-foreground">{`${summary.percent}%`}</Text>
-          <View
-            className="h-2 overflow-hidden rounded-full"
-            style={{ backgroundColor: theme["--color-border"] }}
-          >
+          <View className="h-2 overflow-hidden rounded-full bg-border">
             <View
-              style={{
-                width: `${summary.percent}%`,
-                height: "100%",
-                backgroundColor: theme[CONTEXT_WINDOW_TONE_VARIABLE[summary.tone]],
-              }}
+              className={cn("h-full", CONTEXT_WINDOW_TONE_CLASS[summary.tone].bg)}
+              style={{ width: `${summary.percent}%` }}
             />
             {summary.autoCompact ? (
               <View
-                style={{
-                  position: "absolute",
-                  left: `${summary.autoCompact.percent}%`,
-                  top: 0,
-                  bottom: 0,
-                  width: 2,
-                  backgroundColor: theme["--color-foreground"],
-                }}
+                className="absolute top-0 bottom-0 w-0.5 bg-foreground"
+                style={{ left: `${summary.autoCompact.percent}%` }}
               />
             ) : null}
           </View>
