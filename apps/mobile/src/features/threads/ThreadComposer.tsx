@@ -81,6 +81,7 @@ import {
   ComposerToolbarRow,
 } from "../../components/ComposerToolbar";
 import { ContextWindowControl } from "../context-window/ContextWindowControl";
+import { canCompactContext } from "../context-window/contextWindowSummary";
 import { formatTokens } from "@t3tools/shared/usageFormat";
 import { ComposerModelControl } from "../../components/ComposerModelControl";
 import {
@@ -700,6 +701,16 @@ export const ThreadComposer = function ThreadComposer(props: ThreadComposerProps
     </View>
   );
 
+  const contextCompactable = canCompactContext({
+    connected: props.connectionState === "connected",
+    canOperateThread: props.canOperateThread,
+    hasCompactableConversation: props.hasCompactableConversation,
+    activeThreadBusy: props.activeThreadBusy,
+    providerSlashCommands: props.serverConfig?.providers.find(
+      (provider) => provider.instanceId === props.selectedThread.modelSelection.instanceId,
+    )?.slashCommands,
+  });
+
   const compactBeforeSend =
     props.compactBeforeSend && !showResumeAction && queuedEdit === null
       ? props.compactBeforeSend
@@ -1033,11 +1044,7 @@ export const ThreadComposer = function ThreadComposer(props: ThreadComposerProps
                     <ContextWindowControl
                       size={usesLargeControls ? "large" : "regular"}
                       iconOnly={!compactEditor.isExpanded}
-                      canCompact={
-                        props.canOperateThread &&
-                        props.hasCompactableConversation &&
-                        !props.activeThreadBusy
-                      }
+                      canCompact={contextCompactable}
                       onCompact={props.onCompactContext}
                     />
                   ) : null}

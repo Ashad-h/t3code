@@ -1,7 +1,7 @@
 import type { ContextWindowSnapshot } from "@t3tools/client-runtime/state/context-window";
 import { describe, expect, it } from "vite-plus/test";
 
-import { summarizeContextWindow } from "./contextWindowSummary";
+import { canCompactContext, summarizeContextWindow } from "./contextWindowSummary";
 
 function snapshot(overrides: Partial<ContextWindowSnapshot>): ContextWindowSnapshot {
   return {
@@ -85,24 +85,20 @@ describe("summarizeContextWindow", () => {
     },
   );
 
-  it("maps the breakdown", () => {
+  it("leaves out the token breakdown, whose meaning differs per provider", () => {
     const summary = summarizeContextWindow({
       ...designExample,
       lastInputTokens: 7_800,
-      lastOutputTokens: 1_300,
       inputTokens: 98_000,
-      cachedInputTokens: 71_000,
-      outputTokens: 26_000,
       cost: { amount: 0.42, currency: "USD" },
     });
-    expect(summary?.lastTurn).toEqual({ input: "7.80K", output: "1.30K" });
-    expect(summary?.thread).toEqual({ input: "98K", cached: "71K", output: "26K" });
-    expect(summary?.cost).toEqual({ amount: 0.42, currency: "USD" });
-
-    const bare = summarizeContextWindow(designExample);
-    expect(bare?.lastTurn).toBeNull();
-    expect(bare?.thread).toBeNull();
-    expect(bare?.cost).toBeNull();
+    expect(Object.keys(summary ?? {}).sort()).toEqual([
+      "autoCompact",
+      "max",
+      "percent",
+      "tone",
+      "used",
+    ]);
   });
 
   it("treats omitted optional fields as missing", () => {
@@ -117,9 +113,31 @@ describe("summarizeContextWindow", () => {
     expect(summary).toMatchObject({
       percent: 62,
       autoCompact: null,
-      lastTurn: null,
-      thread: null,
-      cost: null,
     });
+  });
+});
+
+describe("canCompactContext", () => {
+  const ready = {
+    connected: true,
+    canOperateThread: true,
+    hasCompactableConversation: true,
+    activeThreadBusy: false,
+    providerSlashCommands: [{ name: "clear" }, { name: "compact" }],
+  };
+
+  it("allows compacting an idle, connected thread whose provider compacts", () => {
+    expect(canCompactContext(ready)).toBe(true);
+  });
+
+  it.each([
+    ["offline", { connected: false }],
+    ["without operate permission", { canOperateThread: false }],
+    ["with nothing to compact or while compacting", { hasCompactableConversation: false }],
+    ["while the agent works", { activeThreadBusy: true }],
+    ["when the provider has no /compact", { providerSlashCommands: [{ name: "clear" }] }],
+    ["when the provider status is unknown", { providerSlashCommands: undefined }],
+  ])("refuses %s", (_case, override) => {
+    expect(canCompactContext({ ...ready, ...override })).toBe(false);
   });
 });

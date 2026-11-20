@@ -95,32 +95,6 @@ function ContextWindowSheet(props: {
             </Text>
           ) : null}
         </View>
-        {summary.lastTurn || summary.thread || summary.cost ? (
-          <View className="gap-2">
-            {summary.lastTurn ? (
-              <DetailRow
-                label={gt("Last turn")}
-                value={gt("input {input} · output {output}", summary.lastTurn)}
-              />
-            ) : null}
-            {summary.thread ? (
-              <DetailRow
-                label={gt("Whole thread")}
-                value={
-                  summary.thread.cached === null
-                    ? gt("input {input} · output {output}", summary.thread)
-                    : gt("input {input} · cached {cached} · output {output}", summary.thread)
-                }
-              />
-            ) : null}
-            {summary.cost ? (
-              <DetailRow
-                label={gt("Cost")}
-                value={`${summary.cost.amount.toFixed(2)} ${summary.cost.currency}`}
-              />
-            ) : null}
-          </View>
-        ) : null}
         <Button
           label={gt("Compact now")}
           disabled={!props.canCompact}
@@ -131,14 +105,5 @@ function ContextWindowSheet(props: {
         />
       </ScrollView>
     </Sheet>
-  );
-}
-
-function DetailRow(props: { readonly label: string; readonly value: string }) {
-  return (
-    <View className="flex-row items-baseline justify-between gap-4">
-      <Text className="text-sm text-foreground-muted">{props.label}</Text>
-      <Text className="shrink text-right text-sm text-foreground">{props.value}</Text>
-    </View>
   );
 }

@@ -5,8 +5,9 @@ import type { ContextWindowTone } from "./contextWindowSummary";
 
 export const CONTEXT_WINDOW_TONE_CLASS = {
   normal: { text: "text-foreground-muted", bg: "bg-foreground-muted" },
-  warning: { text: "text-warning", bg: "bg-warning" },
-  danger: { text: "text-danger", bg: "bg-danger" },
+  // The plain warning/danger tokens are pale banner backgrounds on mobile.
+  warning: { text: "text-warning-foreground", bg: "bg-warning-foreground" },
+  danger: { text: "text-danger-foreground", bg: "bg-danger-foreground" },
 } as const satisfies Record<ContextWindowTone, { text: string; bg: string }>;
 
 export function ContextWindowRing(props: {

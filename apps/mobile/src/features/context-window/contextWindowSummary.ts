@@ -13,13 +13,6 @@ export interface ContextWindowSummary {
     readonly left: string;
     readonly percent: number;
   } | null;
-  readonly lastTurn: { readonly input: string; readonly output: string } | null;
-  readonly thread: {
-    readonly input: string;
-    readonly cached: string | null;
-    readonly output: string;
-  } | null;
-  readonly cost: { readonly amount: number; readonly currency: string } | null;
 }
 
 // Same thresholds as desktop's ThreadDetailsContext.
@@ -39,14 +32,6 @@ export function summarizeContextWindow(
   const percent = Math.round(Math.max(0, Math.min(100, rawPercent)));
   // Optional usage fields may be omitted as well as null.
   const threshold = snapshot.autoCompactThreshold ?? null;
-  const lastInput = snapshot.lastInputTokens ?? null;
-  const lastOutput = snapshot.lastOutputTokens ?? null;
-  const input = snapshot.inputTokens ?? null;
-  const cached = snapshot.cachedInputTokens ?? null;
-  const output = snapshot.outputTokens ?? null;
-  const cost = snapshot.cost ?? null;
-  const hasLastTurn = lastInput !== null || lastOutput !== null;
-  const hasThread = input !== null || output !== null;
 
   return {
     percent,
@@ -61,16 +46,22 @@ export function summarizeContextWindow(
             percent: (threshold / maxTokens) * 100,
           }
         : null,
-    lastTurn: hasLastTurn
-      ? { input: formatTokens(lastInput ?? 0), output: formatTokens(lastOutput ?? 0) }
-      : null,
-    thread: hasThread
-      ? {
-          input: formatTokens(input ?? 0),
-          cached: cached === null ? null : formatTokens(cached),
-          output: formatTokens(output ?? 0),
-        }
-      : null,
-    cost: cost === null ? null : { amount: cost.amount, currency: cost.currency },
   };
+}
+
+// Like desktop's hasAvailableCompactionProvider: /compact only runs on providers that list it.
+export function canCompactContext(input: {
+  readonly connected: boolean;
+  readonly canOperateThread: boolean;
+  readonly hasCompactableConversation: boolean;
+  readonly activeThreadBusy: boolean;
+  readonly providerSlashCommands: ReadonlyArray<{ readonly name: string }> | undefined;
+}): boolean {
+  return (
+    input.connected &&
+    input.canOperateThread &&
+    input.hasCompactableConversation &&
+    !input.activeThreadBusy &&
+    (input.providerSlashCommands?.some((command) => command.name === "compact") ?? false)
+  );
 }
