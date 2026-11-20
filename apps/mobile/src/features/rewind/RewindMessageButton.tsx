@@ -12,8 +12,8 @@ import {
 } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Haptics from "expo-haptics";
+import { useAtomValue } from "@effect/atom-react";
 import { useGT, useMessages } from "gt-react-native";
-import { useState } from "react";
 import { type ColorValue, Pressable } from "react-native";
 
 import { SymbolView } from "../../components/ui/AppSymbol";
@@ -25,6 +25,8 @@ import { readEnvironmentScope } from "../../state/session";
 import { environmentThreadDetails, threadEnvironment } from "../../state/threads";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { mergeComposerDraftContent } from "../../state/use-composer-drafts";
+import { rewindComposerContent } from "./rewindComposerContent";
+import { beginThreadRewind, endThreadRewind, threadRewindingAtom } from "./rewindLock";
 import { useRewindTarget } from "./rewindState";
 import { findRewindCheckpoint } from "./rewindTargets";
 import { waitForRewind } from "./waitForRewind";
@@ -45,7 +47,8 @@ export function RewindMessageButton(props: {
 }) {
   const gt = useGT();
   const m = useMessages();
-  const [busy, setBusy] = useState(false);
+  const threadKey = scopedThreadKey(props.environmentId, props.threadId);
+  const busy = useAtomValue(threadRewindingAtom(threadKey));
   const turnCount = useRewindTarget(props);
   const revertCheckpoint = useRevertCheckpoint();
   if (
@@ -59,7 +62,7 @@ export function RewindMessageButton(props: {
   const readProjection = () => Option.getOrNull(appAtomRegistry.get(stateAtom).data);
 
   const rewind = (restoreFiles: boolean) => {
-    setBusy(true);
+    if (!beginThreadRewind(threadKey)) return;
     void rewindBeforeMessage({
       ...props,
       turnCount,
@@ -68,9 +71,9 @@ export function RewindMessageButton(props: {
       subscribe: (listener) => appAtomRegistry.subscribe(stateAtom, listener),
       revertCheckpoint,
     }).then(
-      () => setBusy(false),
+      () => endThreadRewind(threadKey),
       (error: unknown) => {
-        setBusy(false);
+        endThreadRewind(threadKey);
         Dialog.alert(
           gt("Could not rewind"),
           errorDisplayMessage(error, m) ?? gt("Please try again."),
@@ -161,8 +164,7 @@ async function rewindBeforeMessage(input: {
     },
   });
   await mergeComposerDraftContent(scopedThreadKey(input.environmentId, input.threadId), {
-    text: input.text,
-    ...(input.context === undefined ? {} : { context: input.context }),
+    ...rewindComposerContent({ text: input.text, context: input.context }),
     attachments: [],
   });
 }

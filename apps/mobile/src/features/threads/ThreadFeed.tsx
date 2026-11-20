@@ -2642,7 +2642,7 @@ function renderFeedEntry(
                 environmentId={props.environmentId}
                 threadId={props.threadId}
                 messageId={message.id}
-                text={message.text}
+                text={presentation.text}
                 context={message.context}
                 hasAttachments={attachments.length > 0}
                 tintColor={iconSubtleColor}
